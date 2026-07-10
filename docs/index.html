@@ -27,7 +27,7 @@
     <meta property="og:url" content="https://usal.dev/" />
 
     <link rel="stylesheet" href="style.css" />
-    <script src="https://cdn.usal.dev/latest"></script>
+    <script type="module" src="https://cdn.usal.dev/v2/latest"></script>
 
     <!-- Highlight.js -->
     <link
@@ -106,9 +106,9 @@
                 class="baseline"
               >
                 <img
-                  src="https://web-platform-dx.github.io/web-features/assets/img/baseline-widely-word-dark.svg"
+                  src="assets/baseline-widely-icon-dark.svg"
                   alt="Baseline"
-                  style="max-width: 9rem"
+                  style="max-width: 3rem"
                 /><span style="font-weight: 100">|</span><span>Baseline</span>
               </a>
               <div class="quick-nav">
@@ -161,7 +161,7 @@
               <div class="install-options">
                 <div class="card card-compact" data-usal="fade-u">
                   <h4>CDN</h4>
-                  <pre><code class="html">&lt;script src="https://cdn.usal.dev/latest">&lt;/script></code></pre>
+                  <pre><code class="html">&lt;script type="module" src="https://cdn.usal.dev/v2/latest">&lt;/script></code></pre>
                 </div>
 
                 <div class="card card-compact" data-usal="fade-u delay-100">
@@ -1021,6 +1021,27 @@ line-[rx+360] easing-[cubic-bezier(0.4,0,0.2,1)]
               <div class="card" data-usal="fade-u-5 threshold-2">
                 <h3>JavaScript API</h3>
                 <div class="animation-item">
+                  <div class="animation-name">import usal from "usal"</div>
+                  <div class="animation-desc">
+                    ESM: callable default export (shorthand for usal.config())
+                  </div>
+                  <pre><code class="javascript">// ESM import — usal is callable, same as usal.config()
+import usal from "usal";
+
+usal({
+  once: true,
+  defaults: {
+    duration: 900,
+    delay: 200,
+    easing: "ease",
+  },
+});
+
+// CDN (auto-initializes) — instance on globalThis/window
+//   &lt;script type="module" src="https://cdn.usal.dev/v2/latest"&gt;&lt;/script&gt;
+// globalThis.USAL.config({ once: true });</code></pre>
+                </div>
+                <div class="animation-item">
                   <div class="animation-name">window.USAL.config(options)</div>
                   <div class="animation-desc">Configure or reconfigure at any time</div>
                   <pre><code class="javascript">// Initial configuration
@@ -1104,6 +1125,90 @@ console.log(window.USAL.version); // string</code></pre>
               </h2>
 
               <div class="changelog-container">
+                <!-- v2.0.0 -->
+                <div class="changelog-entry" data-usal="fade-u delay-100">
+                  <div class="changelog-header">
+                    <h3 class="changelog-version">v2.0.0</h3>
+                    <span class="changelog-date">July 2026</span>
+                  </div>
+                  <div class="changelog-content">
+                    <h4>⚠️ Breaking: ESM-Only</h4>
+                    <ul>
+                      <li>
+                        <strong>ESM-only</strong>: removed CommonJS (<code>require</code>), UMD/IIFE
+                        and non-module <code>&lt;script&gt;</code> builds
+                        <ul>
+                          <li>
+                            Use <code>import usal from 'usal'</code> instead of
+                            <code>require</code>
+                          </li>
+                          <li>
+                            CDN now requires
+                            <code
+                              >&lt;script type="module"
+                              src="https://cdn.usal.dev/v2/latest"&gt;&lt;/script&gt;</code
+                            >
+                            (legacy <code>/latest</code> keeps serving v1.3.1)
+                          </li>
+                          <li>
+                            Build target raised to <code>es2022</code> (modern browsers with native
+                            ESM)
+                          </li>
+                        </ul>
+                      </li>
+                    </ul>
+                    <h4>New</h4>
+                    <ul>
+                      <li>
+                        <strong>Callable ESM default export</strong>:
+                        <code>import usal from 'usal'; usal({...})</code> now works as a shorthand
+                        for <code>usal.config({...})</code> — fixes direct ESM imports in Vite and
+                        modern bundlers (<a
+                          href="https://github.com/usaljs/usal/issues/7"
+                          target="_blank"
+                          >Issue #7</a
+                        >)
+                      </li>
+                      <li>
+                        <strong><code>globalThis.USAL</code></strong
+                        >: the instance is now exposed on <code>globalThis</code> (browsers, Node,
+                        workers) in addition to
+                        <code>window.USAL</code>
+                      </li>
+                      <li>
+                        <strong>SSR-safe</strong>: <code>usal({...})</code> is a safe no-op on the
+                        server, preventing crashes in Next.js/Nuxt SSR
+                      </li>
+                      <li>
+                        <strong>Self-hosted Baseline badge</strong> in the docs (no external
+                        hotlink)
+                      </li>
+                      <li>
+                        <strong>Playground</strong>: Replay button (<code>Ctrl/Cmd+Enter</code>),
+                        toast feedback and a more robust update queue
+                      </li>
+                    </ul>
+                    <h4>Fixed</h4>
+                    <ul>
+                      <li>Playground editor cursor-jump / feedback loop on programmatic updates</li>
+                      <li>
+                        Playground parsing of <code>count-[...]</code> and
+                        <code>line-[...]</code> values containing spaces (bracket-aware tokenizer)
+                      </li>
+                      <li>
+                        Playground split syntax now generates the canonical form (<code
+                          >split-item zoomin</code
+                        >)
+                      </li>
+                      <li>
+                        Playground <code>data-usal</code>/<code>style</code> edits stay scoped to
+                        the animated element (no longer migrate to the first tag)
+                      </li>
+                      <li>Share/copy clipboard fallback for non-secure contexts</li>
+                    </ul>
+                  </div>
+                </div>
+
                 <!-- v1.3.1 -->
                 <div class="changelog-entry" data-usal="fade-u delay-100">
                   <div class="changelog-header">

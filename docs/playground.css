@@ -833,3 +833,41 @@ body {
     flex: 1;
   }
 }
+
+/* Toast / status feedback */
+.pg-toast {
+  position: fixed;
+  bottom: 1.25rem;
+  left: 50%;
+  transform: translateX(-50%) translateY(1rem);
+  background: #1a1a1a;
+  border: 1px solid #333;
+  color: #e0e0e0;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-family: inherit;
+  z-index: 9999;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+  max-width: 80vw;
+  text-align: center;
+}
+
+.pg-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.pg-toast.error {
+  border-color: #ff5252;
+  color: #ffb4b4;
+}
+
+.pg-toast.success {
+  border-color: #4caf50;
+  color: #b6efb8;
+}

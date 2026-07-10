@@ -5,6 +5,38 @@ All notable changes to USAL.js will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2026-07-10
+
+### ⚠️ Breaking Changes
+
+- **ESM-only**: USAL is now an ES module package. Removed CommonJS (`require`), UMD/IIFE and `<script>` (non-module) builds.
+  - Node.js `require('usal')` no longer works — use `import`.
+  - CDN must be loaded with `<script type="module">`. The new CDN endpoint is `https://cdn.usal.dev/v2/latest` (served via esm.sh); the legacy `https://cdn.usal.dev/latest` keeps pointing at v1.3.1 for backward compatibility.
+  - `package.json` `exports` is now `import` + `types` only (`main`/`module`/`browser`/`require` fields removed). The minified CDN bundle (`usal.min.js`) is now ESM.
+  - Build target raised to `es2022` (drops legacy browser support; requires native ESM support).
+
+### Added
+
+- **Callable ESM default export**: `import usal from 'usal'; usal({...})` now works as a shorthand for `usal.config({...})`, fixing direct ESM imports in Vite and modern bundlers. ([#7](https://github.com/usaljs/usal/issues/7))
+  - The default export is now a callable function that also exposes `.config()`, `.destroy()`, `.restart()`, `.initialized()` and `.version`.
+- **`globalThis.USAL`**: the instance is now exposed on `globalThis` (works in browsers, Node and workers) in addition to `window.USAL`, so `globalThis.USAL.config(...)` is available after `import 'usal'` or `<script type="module">`.
+- **SSR-safe callable stub**: `import usal from 'usal'; usal({...})` is a safe no-op on the server (no `window`), preventing crashes in Next.js/Nuxt SSR.
+- **Baseline badge**: documentation now ships a self-hosted Baseline icon (`docs/assets/baseline-widely-icon-dark.svg`) instead of an external hotlink.
+- **Playground improvements**: new Replay button (and `Ctrl/Cmd+Enter` shortcut) to re-trigger animations, toast feedback, and a more robust update queue.
+
+### Fixed
+
+- **Playground editor feedback loop**: fixed the cursor jump / double-`setValue` bug where programmatic updates re-triggered the editor listener. The guard is now synchronous and the editor no longer fights user input.
+- **Playground `count-[...]` / `line-[...]` parsing**: values containing spaces (e.g. `count-[21 000 000.00]`, timelines with `|`) were split across tokens and never parsed. Added a bracket-aware tokenizer that keeps spans intact.
+- **Playground split syntax**: the generated `data-usal` now uses the canonical form (`split-item zoomin`) instead of the non-canonical `split-item split-zoomin`, matching the library parser and presets.
+- **Playground multi-element editing**: `data-usal` and `style` are now read/written on the first element that carries `data-usal`, instead of migrating to the first tag in the HTML. Style merging no longer reads an unrelated tag's `style`.
+- **Share/copy fallback**: clipboard actions now fall back to a hidden `<textarea>` + `execCommand('copy')` when the async Clipboard API is unavailable, and always reflect the URL in the address bar.
+
+### Changed
+
+- **Documentation**: README, `docs/index.html`, `docs/API.md` and `docs/llms.txt` now document the ESM import (`import usal from 'usal'`) and the new `v2/latest` CDN path.
+- **CDN debug tool** (`dev/debug.js`): all USAL builds (local source and CDN) are loaded as modules via dynamic `import()`; the legacy jsDelivr fallback handles IIFE v1 builds that only set `window.USAL` as a side effect.
+
 ## [1.3.1] - 2025-10-06
 
 ### Fixed
@@ -265,6 +297,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Threshold controls
 - Duration and delay modifiers
 
+[2.0.0]: https://github.com/usaljs/usal/compare/v1.3.1...v2.0.0
 [1.3.1]: https://github.com/usaljs/usal/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/usaljs/usal/compare/v1.2.3...v1.3.0
 [1.2.3]: https://github.com/usaljs/usal/compare/v1.2.2...v1.2.3

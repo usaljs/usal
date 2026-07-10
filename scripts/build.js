@@ -89,7 +89,7 @@ if (!rootPackageJson.devDependencies) {
 const buildConfig = {
   bundle: true,
   sourcemap: true,
-  target: ['es6'],
+  target: ['es2022'],
   loader: {
     '.ts': 'ts',
     '.tsx': 'tsx',
@@ -227,7 +227,7 @@ const createExportMap = (entryName, baseFileName, config) => {
     };
   }
   return entryName === '.'
-    ? { types: './index.d.ts', import: './index.esm.js', require: './index.cjs' }
+    ? { types: './index.d.ts', import: './index.esm.js' }
     : `./${baseFileName}.js`;
 };
 
@@ -251,11 +251,9 @@ function createSubPackageJson(framework, config = {}) {
     bugs: rootPackageJson.bugs,
     author: rootPackageJson.author,
     license: rootPackageJson.license,
-    main: './index.cjs',
-    module: './index.esm.js',
     types: './index.d.ts',
     exports: {},
-    files: ['*.cjs', '*.js', '*.map', '*.ts', 'README.md', 'LICENSE'],
+    files: ['*.js', '*.map', '*.ts', 'README.md', 'LICENSE'],
     keywords: [...rootPackageJson.keywords, framework === 'vanilla' ? null : framework].filter(
       Boolean
     ),
@@ -316,14 +314,11 @@ function createSubPackageJson(framework, config = {}) {
   }
 
   if (framework === 'vanilla') {
-    packageJson.browser = `./${PROJECT_NAME}.umd.js`;
     packageJson.unpkg = `./${PROJECT_NAME}.min.js`;
     packageJson.jsdelivr = `./${PROJECT_NAME}.min.js`;
     packageJson.exports['.'] = {
       types: './index.d.ts',
-      browser: `./${PROJECT_NAME}.umd.js`,
       import: './index.esm.js',
-      require: './index.cjs',
     };
   }
 
@@ -525,35 +520,15 @@ async function buildFrameworkPackage(name, config = {}) {
     });
     if (!isSilent) hLog(2, false, 'success', '✓', 'ESM build complete');
 
-    const cjsOutfile = path.join(packageDir, 'index.cjs');
-    await esbuild.build({
-      ...buildOptions,
-      format: 'cjs',
-      outfile: cjsOutfile,
-    });
-    if (!isSilent) hLog(2, false, 'success', '✓', 'CJS build complete');
-
     if (name === 'vanilla') {
-      const globalName = PROJECT_NAME.toUpperCase();
       await esbuild.build({
         ...buildOptions,
-        format: 'iife',
-        globalName: globalName,
-        outfile: path.join(packageDir, `${PROJECT_NAME}.umd.js`),
-      });
-      if (!isSilent) hLog(2, false, 'success', '✓', 'UMD build complete');
-      await esbuild.build({
-        ...buildOptions,
-        format: 'iife',
-        globalName: '__temp',
+        format: 'esm',
         minify: true,
         sourcemap: false,
         outfile: path.join(packageDir, `${PROJECT_NAME}.min.js`),
-        footer: {
-          js: `;!function(){var L=__temp.default||__temp;"undefined"!=typeof window&&(window.${globalName}=L),"undefined"!=typeof global&&(global.${globalName}=L)}();`,
-        },
       });
-      if (!isSilent) hLog(2, false, 'success', '✓', 'UMD minified build complete');
+      if (!isSilent) hLog(2, false, 'success', '✓', 'ESM minified build complete');
     }
 
     if (config.plugins && Array.isArray(config.plugins)) {

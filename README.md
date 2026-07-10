@@ -39,7 +39,7 @@
 ### CDN (Quickstart)
 
 ```html
-<script src="https://cdn.usal.dev/latest"></script>
+<script type="module" src="https://cdn.usal.dev/v2/latest"></script>
 ```
 
 ### NPM
@@ -55,6 +55,20 @@ npm install @usal/vue   # For Vue/Nuxt
 npm install @usal/lit   # For Lit
 npm install @usal/angular   # For Angular
 ```
+
+### ESM (Vite / bundlers)
+
+```js
+import usal from 'usal';
+
+// usal() is callable — shorthand for usal.config()
+usal({
+  once: true,
+  defaults: { duration: 900, delay: 200, easing: 'ease' },
+});
+```
+
+USAL auto-initializes on import. The instance is also available on `globalThis.USAL` (CDN / `<script type="module">`): `globalThis.USAL.config(...)`.
 
 ## 🚀 Framework Setup
 

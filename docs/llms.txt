@@ -22,7 +22,7 @@ Things to remember when using USAL.js:
 
 ### CDN (Quickstart)
 ```html
-<script src="https://cdn.usal.dev/latest"></script>
+<script type="module" src="https://cdn.usal.dev/v2/latest"></script>
 ```
 
 ### NPM
@@ -98,6 +98,14 @@ npm install @usal/angular        # Angular
 ## JavaScript API
 
 ```javascript
+// ESM import — usal is callable (shorthand for usal.config())
+import usal from 'usal';
+usal({ once: true, defaults: { duration: 900, delay: 200, easing: 'ease' } });
+
+// CDN (auto-initializes), instance on globalThis/window:
+//   <script type="module" src="https://cdn.usal.dev/v2/latest"></script>
+// globalThis.USAL.config({ once: true });
+
 // Configuration
 window.USAL.config({
   defaults: {
@@ -170,7 +178,7 @@ window.USAL.version        // Get version
 - **GitHub Repository:** https://github.com/usaljs/usal
 - **Issues & Bug Reports:** https://github.com/usaljs/usal/issues
 - **NPM Package:** https://npmjs.com/package/usal
-- **CDN:** https://cdn.usal.dev/latest
+- **CDN:** https://cdn.usal.dev/v2/latest
 - **Creator:** [@italoalmeida0](https://github.com/italoalmeida0)
 
 ## Inspiration

@@ -1,24 +1,27 @@
 // noinspection JSBitwiseOperatorUsage
 
 const USAL = (() => {
-  // Return existing instance
-  if (typeof window !== 'undefined' && window.USAL) {
-    return window.USAL;
+  // Return existing instance (re-imports / HMR / multiple module instances)
+  if (typeof globalThis !== 'undefined' && globalThis.USAL) {
+    return globalThis.USAL;
   }
 
-  // SSR safety
+  // SSR safety: no browser environment available. The stub is callable too,
+  // so `import usal from 'usal'; usal({...})` is a safe no-op on the server.
   if (typeof window === 'undefined') {
-    return {
-      config: function () {
-        return arguments.length === 0 ? {} : this;
-      },
-      destroy: async () => {},
-      restart: async function () {
-        return this;
-      },
-      initialized: () => false,
-      version: '{%%VERSION%%}',
+    const noop = function usalSSR() {
+      return arguments.length === 0 ? noop.config() : noop.config(arguments[0]);
     };
+    noop.config = function () {
+      return arguments.length === 0 ? {} : noop;
+    };
+    noop.destroy = async () => {};
+    noop.restart = async function () {
+      return noop;
+    };
+    noop.initialized = () => false;
+    noop.version = '{%%VERSION%%}';
+    return noop;
   }
 
   // ============================================================================
@@ -1500,7 +1503,7 @@ const USAL = (() => {
   // Public API
   // ============================================================================
 
-  const publicAPI = {
+  const api = {
     config(newConfig = {}) {
       if (arguments.length === 0) return { ...instance.config };
 
@@ -1592,6 +1595,15 @@ const USAL = (() => {
     version: '{%%VERSION%%}',
   };
 
+  // Make the public API callable so `import usal from 'usal'; usal({...})`
+  // works as a shorthand for `usal.config({...})`, while keeping the
+  // method-based API (usal.config(), usal.destroy(), ...) intact. The same
+  // callable is exposed on globalThis.USAL for CDN <script type="module"> use.
+  const publicAPI = function usal(config) {
+    return arguments.length === 0 ? api.config() : api.config(config);
+  };
+  Object.assign(publicAPI, api);
+
   // Initialize on DOM ready
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', autoInit, { once: true });
@@ -1602,9 +1614,10 @@ const USAL = (() => {
   return publicAPI;
 })();
 
-// Export for modules
-if (typeof window !== 'undefined' && !window.USAL) {
-  window.USAL = USAL;
+// Expose on globalThis (browser `window`, Node `global`, workers) so CDN
+// <script type="module"> usage keeps working: globalThis.USAL.config(...)
+if (typeof globalThis !== 'undefined' && !globalThis.USAL) {
+  globalThis.USAL = USAL;
 }
 
 export default USAL;

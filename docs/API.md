@@ -222,6 +222,18 @@ forwards               // Keep final animation state (don't reset to original)
 #### Configuration
 
 ```javascript
+// ESM import — usal is callable (shorthand for usal.config())
+import usal from 'usal';
+
+usal({
+  once: true,
+  defaults: { duration: 900, delay: 200, easing: 'ease' },
+});
+
+// CDN (auto-initializes), instance on globalThis/window:
+//   <script type="module" src="https://cdn.usal.dev/v2/latest"></script>
+// globalThis.USAL.config({ once: true });
+
 // Initialize with custom settings
 window.USAL.config({
   defaults: {

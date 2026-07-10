@@ -8,7 +8,7 @@
 
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.8/theme/yonce.css" />
     <link rel="stylesheet" href="playground.css" />
-    <script src="https://cdn.usal.dev/latest"></script>
+    <script type="module" src="https://cdn.usal.dev/v2/latest"></script>
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css"
@@ -68,6 +68,13 @@
       <header class="playground-header">
         <h1>USAL.js Playground</h1>
         <div class="header-actions">
+          <button
+            id="replayBtn"
+            class="btn btn-secondary"
+            title="Replay animations (Ctrl/Cmd+Enter)"
+          >
+            Replay
+          </button>
           <button id="resetBtn" class="btn btn-secondary">Reset</button>
           <button id="shareBtn" class="btn btn-primary">Share</button>
         </div>

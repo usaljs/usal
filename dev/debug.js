@@ -19,11 +19,6 @@ const Debug = (() => {
       versionInput = '../src/usal.js';
     }
 
-    const oldScript = document.getElementById('usal-script');
-    if (oldScript) {
-      oldScript.remove();
-    }
-
     if (window.USAL?.destroy) {
       window.USAL.destroy();
     }
@@ -37,42 +32,21 @@ const Debug = (() => {
     ) {
       scriptUrl = versionInput;
     } else if (versionInput === 'latest') {
-      scriptUrl = 'https://cdn.jsdelivr.net/npm/usal@latest/dist/usal.min.js';
+      scriptUrl = 'https://cdn.jsdelivr.net/npm/usal@latest/usal.min.js';
     } else {
-      scriptUrl = `https://cdn.jsdelivr.net/npm/usal@${versionInput}/dist/usal.min.js`;
+      scriptUrl = `https://cdn.jsdelivr.net/npm/usal@${versionInput}/usal.min.js`;
     }
 
-    const isModule =
-      !scriptUrl.includes('.min.js') && (scriptUrl.startsWith('../') || scriptUrl.startsWith('./'));
-
-    if (isModule) {
-      try {
-        const module = await import(scriptUrl);
-        window.USAL = module.default || module.USAL || module;
-        log(`✓ USAL module loaded: ${scriptUrl}`, 'pass');
-        log(`Version: ${window.USAL.version || 'Unknown'}`, 'pass');
-      } catch (error) {
-        log(`✗ Error loading module: ${scriptUrl} - ${error.message}`, 'fail');
-      }
-    } else {
-      const script = document.createElement('script');
-      script.id = 'usal-script';
-      script.src = scriptUrl;
-
-      script.onload = () => {
-        if (window.USAL) {
-          log(`✓ USAL script loaded: ${scriptUrl}`, 'pass');
-          log(`Version: ${window.USAL.version || 'Unknown'}`, 'pass');
-        } else {
-          log(`✗ USAL not defined after loading: ${scriptUrl}`, 'fail');
-        }
-      };
-
-      script.onerror = () => {
-        log(`✗ Error loading script: ${scriptUrl}`, 'fail');
-      };
-
-      document.head.appendChild(script);
+    // USAL is ESM-only on v2+ (loaded via import). Legacy v1 builds were IIFE/UMD
+    // that only set window.USAL as a side effect with no exports, so fall back to
+    // the global set by the side effect when there is no `default`/named export.
+    try {
+      const module = await import(scriptUrl);
+      window.USAL = module.default || module.USAL || window.USAL || module;
+      log(`✓ USAL module loaded: ${scriptUrl}`, 'pass');
+      log(`Version: ${window.USAL.version || 'Unknown'}`, 'pass');
+    } catch (error) {
+      log(`✗ Error loading module: ${scriptUrl} - ${error.message}`, 'fail');
     }
   }
 

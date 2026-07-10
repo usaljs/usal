@@ -22,6 +22,10 @@ export interface USALConfig {
 }
 
 export interface USALInstance {
+  /** Shorthand for `usal.config(newConfig)`. Returns the USAL instance for chaining. */
+  (newConfig: Partial<USALConfig>): USALInstance;
+  /** Shorthand for `usal.config()`. Returns the current config. */
+  (): USALConfig;
   config(): USALConfig;
   config(newConfig: Partial<USALConfig>): USALInstance;
   destroy(): Promise<void>; //use only extreme cases, the system is reactive even in shadowRoot
@@ -34,6 +38,8 @@ declare global {
   interface Window {
     USAL: USALInstance;
   }
+  // Available after `import 'usal'` / `<script type="module">`; callable like the default export.
+  var USAL: USALInstance | undefined;
 }
 
 declare const USAL: USALInstance;
