@@ -7,18 +7,22 @@ export const USALPlugin: {
 
 export const useUSAL: () => {
   config(): USALConfig;
-  config(config: USALConfig): void;
+  config(config: Partial<USALConfig>): USALInstance;
   destroy: () => Promise<void>;
   restart: () => Promise<USALInstance>;
+  initialized: () => boolean;
+  readonly version: string;
 };
 
 declare module '@vue/runtime-core' {
   export interface GlobalProperties {
     $usal: {
       config(): USALConfig;
-      config(config: USALConfig): void;
+      config(config: Partial<USALConfig>): USALInstance;
       destroy: () => Promise<void>;
       restart: () => Promise<USALInstance>;
+      initialized: () => boolean;
+      readonly version: string;
     };
   }
 }

@@ -16,6 +16,9 @@ const isSilent = process.argv.includes('--silent') || process.argv.includes('-s'
 const isWatchMode = process.argv.includes('--watch') || process.argv.includes('-w');
 const withoutPostbuild = process.argv.includes('--no-post') || process.argv.includes('-np');
 const skipAngular = process.argv.includes('--skip-angular') || process.argv.includes('-sa');
+const versionOverrideIdx = process.argv.indexOf('--version-override');
+const versionOverride =
+  versionOverrideIdx !== -1 ? process.argv[versionOverrideIdx + 1] : undefined;
 
 const timers = new Map();
 
@@ -80,6 +83,9 @@ function detectPackageManager() {
 }
 
 let rootPackageJson = JSON.parse(fs.readFileSync('package.json', 'utf-8'));
+if (versionOverride) {
+  rootPackageJson.version = versionOverride;
+}
 const PROJECT_NAME = rootPackageJson.name.split('-monorepo')[0];
 
 if (!rootPackageJson.devDependencies) {
@@ -189,10 +195,12 @@ async function setupDevDependencies() {
   }
 }
 
-if (fs.existsSync('packages')) {
-  fs.rmSync('packages', { recursive: true });
+if (!isWatchMode) {
+  if (fs.existsSync('packages')) {
+    fs.rmSync('packages', { recursive: true });
+  }
+  fs.mkdirSync('packages');
 }
-fs.mkdirSync('packages');
 
 function createPackageReadme(framework) {
   const packageName = framework === 'vanilla' ? PROJECT_NAME : `@${PROJECT_NAME}/${framework}`;
@@ -879,14 +887,18 @@ async function watchMode() {
   const initialTimestamp = Date.now();
   const initialVersion = `0.0.0-dev.${initialTimestamp}`;
 
-  rootPackageJson.version = initialVersion;
-  fs.writeFileSync('package.json', JSON.stringify(rootPackageJson, null, 2));
-
-  // Build inicial
+  // Initial build
   elapsed('first build');
   await runCommand(
     'node',
-    ['scripts/build.js', '--no-post', '--silent', skipAngular ? '-sa' : ''],
+    [
+      'scripts/build.js',
+      '--no-post',
+      '--silent',
+      '--version-override',
+      initialVersion,
+      ...(skipAngular ? ['-sa'] : []),
+    ],
     process.cwd()
   );
   hLog(
@@ -916,13 +928,18 @@ async function watchMode() {
       const timestamp = Date.now();
       const devVersion = `0.0.0-dev.${timestamp}`;
 
-      rootPackageJson.version = devVersion;
-      fs.writeFileSync('package.json', JSON.stringify(rootPackageJson, null, 2));
       try {
         elapsed('rebuild');
         await runCommand(
           'node',
-          ['scripts/build.js', '--no-post', '--silent', skipAngular ? '-sa' : ''],
+          [
+            'scripts/build.js',
+            '--no-post',
+            '--silent',
+            '--version-override',
+            devVersion,
+            ...(skipAngular ? ['-sa'] : []),
+          ],
           process.cwd()
         );
         hLog(

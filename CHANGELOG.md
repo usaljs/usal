@@ -5,6 +5,32 @@ All notable changes to USAL.js will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.1] - 2026-11-05
+
+### Added
+
+- **Interactive Playground Studio overhaul**:
+  - Added full `Slide` animation family (`slide`, `slide-u`, `slide-d`, `slide-l`, `slide-r`, `slide-ul`, `slide-ur`, `slide-dl`, `slide-dr`).
+  - Added multi-framework code snippet tabs (`Attribute`, `HTML`, `React / Solid`, `Vue`, `Svelte`, `Angular`, `Lit`) with one-click copy.
+  - Added interactive **Scroll Test** mode to test entrance and exit thresholds inside a scrollable viewport, plus **Grid / Dark / Light** canvas backgrounds.
+  - Added contextual tuning hints, active `data-usal` token bar, HTML code formatter, and local USAL build loader on `localhost`.
+- **Documentation site improvements**:
+  - Added one-click **Copy** buttons to all code blocks, click-to-replay on all interactive animation cards, a top-bar **Playground** shortcut, and browser Back/Forward (`popstate`) history support.
+- **Automated test suite (`test/usal.test.js`)**:
+  - Added 10 automated tests covering SSR safety, config cloning, bracket-balanced tokenization, counter parsing (thousands, decimals, negative values, custom easing), counter interruption recovery, lazy spatial stagger (`center`, `edges`, `linear`), WAAPI style cleanup, rapid DOM element replacement, and framework wrapper surface.
+
+### Fixed
+
+- **Rapid DOM replacement (`MutationObserver` batching)**: Fixed a bug where replacing a `[data-usal]` element in a container within a single synchronous tick was ignored because `__usalFragment` was set on root `[data-usal]` elements. `__usalFragment` is now strictly scoped to internal text/count wrapper spans, and mutation batches are evaluated per record.
+- **Lazy spatial stagger on `split-word` / `split-letter`**: `getStaggerFunction` now computes `getBoundingClientRect()` lazily when `AnimationController.letsGo()` triggers after the 2-rAF DOM insertion instead of reading `0x0` rects synchronously during `setupSplit`. Fixed `linear` stagger origin to `(bounds.minX, bounds.minY)`.
+- **Counter number parsing (`count-[...]`)**: Fixed `setupCount` misinterpreting single-separator thousands (`count-[1,000]`, `count-[42,350]`) as decimals, added multi-separator thousand normalization (`count-[1,000,000]`, `count-[1.000.000]`), added negative number support (`count-[-500]`), and supported custom `cubic-bezier(...)` and `steps(...)` easing in counters.
+- **Counter mid-animation interruption**: Preserved `__usalOriginalText` on count wrappers so `restart()` or rapid re-renders during an active count restore the original target string instead of freezing at an intermediate number.
+- **WAAPI style animation accumulation**: `applyStyles` and `cancelAllAnimations` now cancel previous `__usal_s_*` animations before applying new ones, preventing memory leaks on long-lived elements.
+- **Bracket-balanced class tokenization**: Added `tokenizeClasses` in `src/usal.js` so `split-line-[...]` tokens containing spaces are preserved intact.
+- **Framework integrations**:
+  - `@usal/angular`: Preserved static `data-usal` attributes when `[usal]` input is not bound and added `OnChanges` (`ngOnChanges`) reactivity.
+  - `@usal/react`, `@usal/vue`, `@usal/svelte`, `@usal/solid`, `@usal/lit`: `useUSAL().config(...)` now returns the USAL instance for chaining, exposes `initialized()` and `version`, and avoids redundant `setAttribute` mutations.
+
 ## [2.0.0] - 2026-07-10
 
 ### ⚠️ Breaking Changes

@@ -192,7 +192,7 @@ function getUpdates(fileType, info) {
   }
 
   if (fileType === 'api' && fs.existsSync(files.api)) {
-    // Framework Usage section agora em API.md
+    // Framework Usage section in API.md
     const usageExamples = examples
       .map(({ framework, example, pseudonyms }) => {
         if (!example) return '';

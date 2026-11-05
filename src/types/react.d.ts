@@ -8,9 +8,11 @@ export const USALProvider: React.FC<{
 
 export const useUSAL: () => {
   config(): USALConfig;
-  config(config: USALConfig): void;
+  config(config: Partial<USALConfig>): USALInstance;
   destroy: () => Promise<void>;
   restart: () => Promise<USALInstance>;
+  initialized: () => boolean;
+  readonly version: string;
 };
 
 export default USAL;

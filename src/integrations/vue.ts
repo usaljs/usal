@@ -12,18 +12,29 @@ export const USALPlugin = {
       config: (c) => (c === undefined ? USALLib.config() : USALLib.config(c)),
       destroy: () => USALLib.destroy(),
       restart: () => USALLib.restart(),
+      initialized: () => USALLib.initialized(),
+      version: USALLib.version,
     };
 
     // Add directive
     app.directive('usal', {
       mounted(el, binding) {
-        el.setAttribute('data-usal', binding.value || 'fade');
+        const nextValue = binding.value || 'fade';
+        if (el.getAttribute('data-usal') !== nextValue) {
+          el.setAttribute('data-usal', nextValue);
+        }
       },
       updated(el, binding) {
-        el.setAttribute('data-usal', binding.value || 'fade');
+        const nextValue = binding.value || 'fade';
+        if (el.getAttribute('data-usal') !== nextValue) {
+          el.setAttribute('data-usal', nextValue);
+        }
       },
       beforeMount(el, binding) {
-        el.setAttribute('data-usal', binding.value || 'fade');
+        const nextValue = binding.value || 'fade';
+        if (el.getAttribute('data-usal') !== nextValue) {
+          el.setAttribute('data-usal', nextValue);
+        }
       },
       getSSRProps(binding) {
         return {
@@ -35,14 +46,11 @@ export const USALPlugin = {
 };
 
 export const useUSAL = () => ({
-  config: (config) => {
-    if (config === undefined) {
-      return USALLib.config();
-    }
-    USALLib.config(config);
-  },
+  config: (config) => (config === undefined ? USALLib.config() : USALLib.config(config)),
   destroy: () => USALLib.destroy(),
   restart: () => USALLib.restart(),
+  initialized: () => USALLib.initialized(),
+  version: USALLib.version,
 });
 
 export default USALLib;

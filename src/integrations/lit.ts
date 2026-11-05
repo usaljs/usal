@@ -25,7 +25,7 @@ export class USALController {
     if (config === undefined) {
       return USALLib.config();
     }
-    USALLib.config(config);
+    return USALLib.config(config);
   }
 
   destroy() {
@@ -35,17 +35,22 @@ export class USALController {
   restart() {
     return USALLib.restart();
   }
+
+  initialized() {
+    return USALLib.initialized();
+  }
+
+  get version() {
+    return USALLib.version;
+  }
 }
 
 export const useUSAL = () => ({
-  config: (config) => {
-    if (config === undefined) {
-      return USALLib.config();
-    }
-    USALLib.config(config);
-  },
+  config: (config) => (config === undefined ? USALLib.config() : USALLib.config(config)),
   destroy: () => USALLib.destroy(),
   restart: () => USALLib.restart(),
+  initialized: () => USALLib.initialized(),
+  version: USALLib.version,
 });
 
 export const useUSALController = (host, config = {}) => {
@@ -55,6 +60,8 @@ export const useUSALController = (host, config = {}) => {
     config: (c) => controller.config(c),
     destroy: () => controller.destroy(),
     restart: () => controller.restart(),
+    initialized: () => controller.initialized(),
+    version: controller.version,
   };
 };
 
@@ -65,7 +72,10 @@ class USALDirective extends Directive {
 
   update(part, [value]) {
     const element = part.element;
-    element.setAttribute('data-usal', value || 'fade');
+    const nextValue = value || 'fade';
+    if (element.getAttribute('data-usal') !== nextValue) {
+      element.setAttribute('data-usal', nextValue);
+    }
     return this.render(value);
   }
 }

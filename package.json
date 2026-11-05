@@ -1,6 +1,6 @@
 {
   "name": "usal-monorepo",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "private": true,
   "type": "module",
   "description": "Ultimate Scroll Animation Library - Lightweight, powerful, wonderfully simple ✨",
@@ -138,6 +138,7 @@
     }
   },
   "scripts": {
+    "test": "node --experimental-strip-types --no-warnings --test test/usal.test.js",
     "dev": "node scripts/build.js --watch --skip-angular",
     "dev:with-angular": "node scripts/build.js --watch",
     "build": "npm run lint:fix && node scripts/build.js",
@@ -151,11 +152,11 @@
     "release:github:dry": "node scripts/release-gh.js --dry-run",
     "release:complete": "npm run release:latest && npm run release:github",
     "release:complete:dry": "npm run release:latest:dry && npm run release:github:dry",
-    "format": "prettier --write --ignore-path .gitignore **/*.{js,ts,jsx,tsx,html,css} '!test/**' && npm run format:doc",
-    "format:doc": "prettier --write --ignore-path .prettierignore *.{json,md} packages/**/*.{json,md}",
+    "format": "prettier --write --ignore-path .gitignore \"**/*.{js,ts,jsx,tsx,html,css}\" \"!test/**\" && npm run format:doc",
+    "format:doc": "prettier --write --ignore-path .prettierignore \"*.{json,md}\" \"packages/**/*.{json,md}\"",
     "lint": "eslint src/**/*.{js,ts,jsx,tsx}",
     "lint:fix": "eslint src/**/*.{js,ts,jsx,tsx} --fix",
-    "lint:pkgs": "npx eslint packages/** --no-ignore --rule {no-var:off,no-redeclare:off,prefer-const:off,eqeqeq:off,import/order:off,no-setter-return:off,no-sparse-arrays:off,no-cond-assign:off}",
+    "lint:pkgs": "npx eslint \"packages/**/index.esm.js\" --no-ignore --rule \"{no-var:off,no-redeclare:off,prefer-const:off,eqeqeq:off,import/order:off,no-setter-return:off,no-sparse-arrays:off,no-cond-assign:off,sonarjs/cognitive-complexity:off}\"",
     "lint:texts": "node scripts/lint-texts.js"
   },
   "devDependencies": {

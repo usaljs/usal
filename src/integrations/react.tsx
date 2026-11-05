@@ -15,17 +15,12 @@ export const USALProvider = ({ children, config = {} }) => {
   return <>{children}</>;
 };
 
-export const useUSAL = () => {
-  return {
-    config: (config) => {
-      if (config === undefined) {
-        return USALLib.config();
-      }
-      USALLib.config(config);
-    },
-    destroy: () => USALLib.destroy(),
-    restart: () => USALLib.restart(),
-  };
-};
+export const useUSAL = () => ({
+  config: (config) => (config === undefined ? USALLib.config() : USALLib.config(config)),
+  destroy: () => USALLib.destroy(),
+  restart: () => USALLib.restart(),
+  initialized: () => USALLib.initialized(),
+  version: USALLib.version,
+});
 
 export default USALLib;

@@ -13,14 +13,11 @@ export const USALProvider = (props) => {
 };
 
 export const useUSAL = () => ({
-  config: (config) => {
-    if (config === undefined) {
-      return USALLib.config();
-    }
-    USALLib.config(config);
-  },
+  config: (config) => (config === undefined ? USALLib.config() : USALLib.config(config)),
   destroy: () => USALLib.destroy(),
   restart: () => USALLib.restart(),
+  initialized: () => USALLib.initialized(),
+  version: USALLib.version,
 });
 
 export default USALLib;

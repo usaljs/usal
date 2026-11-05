@@ -26,8 +26,30 @@
     />
     <meta property="og:url" content="https://usal.dev/" />
 
+    <script>
+      if (window.location.pathname.endsWith('/docs')) {
+        window.location.replace(
+          window.location.pathname + '/' + window.location.search + window.location.hash
+        );
+      }
+    </script>
     <link rel="stylesheet" href="style.css" />
-    <script type="module" src="https://cdn.usal.dev/v2/latest"></script>
+    <script type="module">
+      const isLocal = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+      const sources = isLocal
+        ? ['../packages/vanilla/usal.js', '../src/usal.js', 'https://cdn.usal.dev/v2/latest']
+        : ['https://cdn.usal.dev/v2/latest', '../packages/vanilla/usal.js', '../src/usal.js'];
+      for (const src of sources) {
+        try {
+          const mod = await import(src);
+          globalThis.USAL = mod.default || mod.USAL || globalThis.USAL;
+          globalThis.USAL?.config({ defaults: { threshold: 10, delay: 100 } });
+          break;
+        } catch {
+          // Try next source
+        }
+      }
+    </script>
 
     <!-- Highlight.js -->
     <link
@@ -541,7 +563,7 @@ export class AppComponent</code></pre>
                   Ease-in easing <br /><span style="opacity: 50%">fade-d ease-in</span>
                 </div>
                 <div class="box" data-usal="zoomout duration-1000 easing-[steps(4)]">
-                  Ease-out easing <br /><span style="opacity: 50%"
+                  Steps easing <br /><span style="opacity: 50%"
                     >zoomout duration-1000 easing-[steps(4)]</span
                   >
                 </div>
@@ -1125,6 +1147,73 @@ console.log(window.USAL.version); // string</code></pre>
               </h2>
 
               <div class="changelog-container">
+                <!-- v2.0.1 -->
+                <div class="changelog-entry" data-usal="fade-u delay-100">
+                  <div class="changelog-header">
+                    <h3 class="changelog-version">v2.0.1</h3>
+                    <span class="changelog-date">November 2026</span>
+                  </div>
+                  <div class="changelog-content">
+                    <h4>Core Engine Fixes & Robustness</h4>
+                    <ul>
+                      <li>
+                        <strong>Rapid DOM Replacement Fix</strong>: Scoped
+                        <code>__usalFragment</code> strictly to internal split/count spans and
+                        evaluated <code>MutationObserver</code> records individually so replacing a
+                        <code>[data-usal]</code> element in a container animates immediately on the
+                        first render
+                      </li>
+                      <li>
+                        <strong>Lazy Spatial Stagger</strong>: <code>split-delay-*-center</code>,
+                        <code>edges</code>, and <code>linear</code> now read
+                        <code>getBoundingClientRect()</code> lazily after split spans are inserted
+                        into the DOM
+                      </li>
+                      <li>
+                        <strong>Smarter Counter Parsing & Recovery</strong>: Accurate parsing for
+                        single/multiple thousand separators (<code>count-[1,000]</code>,
+                        <code>count-[42,350]</code>, <code>count-[1,000,000]</code>), negative
+                        values (<code>count-[-500]</code>), custom <code>cubic-bezier</code> /
+                        <code>steps</code> easing, and safe mid-animation <code>restart()</code>
+                        recovery
+                      </li>
+                      <li>
+                        <strong>WAAPI Memory Cleanup</strong>: Previous style animations are
+                        cancelled before applying new keyframes, preventing animation accumulation
+                      </li>
+                    </ul>
+                    <h4>Framework Integrations</h4>
+                    <ul>
+                      <li>
+                        <strong><code>@usal/angular</code></strong
+                        >: Preserves static <code>data-usal</code> attributes when
+                        <code>[usal]</code> is unbound and supports reactive
+                        <code>ngOnChanges</code> updates
+                      </li>
+                      <li>
+                        <strong>All Framework Wrappers</strong>: <code>config()</code> returns the
+                        USAL instance for chaining and exposes <code>initialized()</code> and
+                        <code>version</code>
+                      </li>
+                    </ul>
+                    <h4>Interactive Playground & Docs Overhaul</h4>
+                    <ul>
+                      <li>
+                        <strong>Playground Studio</strong>: Added full <code>slide</code> family,
+                        multi-framework code tabs (<code>React</code>, <code>Vue</code>,
+                        <code>Svelte</code>, <code>Angular</code>, <code>Lit</code>), interactive
+                        <strong>Scroll Test</strong> mode, and <strong>Grid / Dark / Light</strong>
+                        canvas themes
+                      </li>
+                      <li>
+                        <strong>Documentation</strong>: Added one-click <strong>Copy</strong>
+                        buttons on all code snippets and click-to-replay on all interactive demo
+                        cards
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+
                 <!-- v2.0.0 -->
                 <div class="changelog-entry" data-usal="fade-u delay-100">
                   <div class="changelog-header">
@@ -1659,6 +1748,15 @@ console.log(window.USAL.version); // string</code></pre>
         <div class="top-bar">
           <button class="mobile-menu-toggle" id="mobileMenuToggle">☰</button>
           <div class="top-bar-actions">
+            <a
+              href="playground.html"
+              id="topPlaygroundLink"
+              class="github-link playground-top-link"
+              target="_blank"
+            >
+              <span>✦</span>
+              <span>Playground</span>
+            </a>
             <a href="https://discord.usal.dev/" class="github-link" target="_blank">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
                 <path
@@ -1740,7 +1838,13 @@ console.log(window.USAL.version); // string</code></pre>
 
     <script>
       document.addEventListener('DOMContentLoaded', function () {
-        window.USAL.config({ defaults: { threshold: 10, delay: 100 } });
+        window.USAL?.config({ defaults: { threshold: 10, delay: 100 } });
+
+        if (['localhost', '127.0.0.1'].includes(window.location.hostname)) {
+          document.querySelectorAll('a[href="https://playground.usal.dev/"]').forEach((a) => {
+            a.href = 'playground.html';
+          });
+        }
 
         const navItems = document.querySelectorAll('.nav-item, .quick-nav-item, .sidebar-logo');
         const sections = document.querySelectorAll('.docs-section');
@@ -1751,7 +1855,7 @@ console.log(window.USAL.version); // string</code></pre>
         let dynamicCount = 0;
         const animations = ['fade-u', 'zoomin', 'flip-r', 'fade-dr', 'zoomout-l'];
 
-        function showSection(sectionId) {
+        function showSection(sectionId, pushHistory = true) {
           sections.forEach((section) => section.classList.remove('active'));
 
           document.querySelectorAll('.sidebar .nav-item').forEach((item) => {
@@ -1778,7 +1882,9 @@ console.log(window.USAL.version); // string</code></pre>
             sidebarOverlay.classList.remove('show');
           }
 
-          history.pushState(null, null, '#' + sectionId);
+          if (pushHistory) {
+            history.pushState(null, null, '#' + sectionId);
+          }
         }
         const addDynamicItem = () => {
           const section = document.getElementById('dynamic-section');
@@ -2124,8 +2230,58 @@ console.log(window.USAL.version); // string</code></pre>
 
         const initialHash = window.location.hash.substring(1);
         if (initialHash && document.getElementById(initialHash)) {
-          showSection(initialHash);
+          showSection(initialHash, false);
         }
+
+        window.addEventListener('popstate', () => {
+          const hash = window.location.hash.substring(1) || 'home';
+          if (document.getElementById(hash)) {
+            showSection(hash, false);
+          }
+        });
+
+        // Add Copy buttons to all code blocks
+        document.querySelectorAll('pre').forEach((pre) => {
+          pre.style.position = 'relative';
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'code-copy-btn';
+          btn.textContent = 'Copy';
+          btn.addEventListener('click', async () => {
+            const code = pre.querySelector('code')?.textContent || pre.textContent || '';
+            try {
+              await navigator.clipboard.writeText(code.trim());
+              btn.textContent = 'Copied!';
+              btn.classList.add('copied');
+              setTimeout(() => {
+                btn.textContent = 'Copy';
+                btn.classList.remove('copied');
+              }, 1600);
+            } catch {
+              // ignore
+            }
+          });
+          pre.appendChild(btn);
+        });
+
+        // Make demo boxes clickable to replay their animation on demand
+        document.querySelectorAll('.box[data-usal], .counter-box').forEach((box) => {
+          box.title = 'Click to replay animation';
+          box.addEventListener('click', () => {
+            const targets = [
+              ...(box.hasAttribute('data-usal') ? [box] : []),
+              ...box.querySelectorAll('[data-usal]'),
+            ];
+            targets.forEach((target) => {
+              const val = target.getAttribute('data-usal');
+              if (!val) return;
+              target.setAttribute('data-usal', '');
+              requestAnimationFrame(() => {
+                target.setAttribute('data-usal', val);
+              });
+            });
+          });
+        });
 
         setTimeout(() => {
           const dynamicSection = document.getElementById('dynamic-section');

@@ -4,6 +4,8 @@ import {
   ElementRef,
   Input,
   OnInit,
+  OnChanges,
+  SimpleChanges,
   Injectable,
   NgModule,
   Renderer2,
@@ -24,8 +26,8 @@ import USALLib, {
   selector: '[usal], [data-usal]',
   standalone: true,
 })
-export class USALDirective implements OnInit {
-  @Input() usal: string = 'fade';
+export class USALDirective implements OnInit, OnChanges {
+  @Input() usal?: string;
 
   constructor(
     private el: ElementRef,
@@ -33,18 +35,35 @@ export class USALDirective implements OnInit {
     @Inject(PLATFORM_ID) private platformId: object
   ) {}
 
-  ngOnInit() {
+  private updateAttribute() {
     if (isPlatformBrowser(this.platformId)) {
-      this.renderer.setAttribute(this.el.nativeElement, 'data-usal', this.usal || 'fade');
+      const nativeEl = this.el.nativeElement;
+      const existing = nativeEl?.getAttribute?.('data-usal');
+      const nextValue = this.usal || existing || 'fade';
+      if (existing !== nextValue) {
+        this.renderer.setAttribute(nativeEl, 'data-usal', nextValue);
+      }
+    }
+  }
+
+  ngOnInit() {
+    this.updateAttribute();
+  }
+
+  ngOnChanges(changes: SimpleChanges) {
+    if ('usal' in changes) {
+      this.updateAttribute();
     }
   }
 }
 
 @Injectable({ providedIn: 'root' })
 export class USALService {
-  config(newConfig: Partial<USALConfig> | undefined): USALInstance | USALConfig {
-    if (newConfig) return USALLib.config(newConfig) as USALInstance;
-    return USALLib.config() as USALConfig;
+  config(): USALConfig;
+  config(newConfig: Partial<USALConfig>): USALInstance;
+  config(newConfig?: Partial<USALConfig>): USALInstance | USALConfig {
+    if (newConfig) return USALLib.config(newConfig);
+    return USALLib.config();
   }
 
   destroy(): Promise<void> {
@@ -54,8 +73,13 @@ export class USALService {
   restart(): Promise<USALInstance> {
     return USALLib.restart();
   }
+
   initialized(): boolean {
     return USALLib.initialized();
+  }
+
+  get version(): string {
+    return USALLib.version;
   }
 }
 

@@ -122,7 +122,9 @@ const USAL = (() => {
       rect.bottom <= 0 ||
       rect.top >= windowHeight ||
       rect.right <= 0 ||
-      rect.left >= windowWidth
+      rect.left >= windowWidth ||
+      rect.height <= 0 ||
+      rect.width <= 0
     ) {
       return 0;
     }
@@ -150,23 +152,47 @@ const USAL = (() => {
   function applyStyles(element, styles, clean = false) {
     if (!element) return;
 
-    // eslint-disable-next-line no-unused-vars
-    const { offset, composite, easing, ...cleanedStyles } = styles;
+    if (instance.destroying != null || clean) {
+      if (typeof element.getAnimations === 'function') {
+        element
+          .getAnimations()
+          .filter((animation) => animation.id && animation.id.startsWith('__usal'))
+          .forEach((animation) => {
+            animation.cancel();
+            animation.effect = null;
+            animation.timeline = null;
+          });
+      }
+      delete element.__usalFragment;
+      delete element.__usalOGStyle;
+      delete element.__usalID;
+      return;
+    }
+
+    const cleanedStyles = { ...styles };
+    delete cleanedStyles.offset;
+    delete cleanedStyles.composite;
+    delete cleanedStyles.easing;
+
+    if (typeof element.getAnimations === 'function') {
+      element
+        .getAnimations()
+        .filter((animation) => animation.id && animation.id.startsWith('__usal_s_'))
+        .forEach((animation) => {
+          animation.cancel();
+          animation.effect = null;
+          animation.timeline = null;
+        });
+    }
 
     element.animate([cleanedStyles], {
       duration: 0,
       fill: 'forwards',
       iterations: 1,
-      id: genTmpId(),
+      id: `__usal_s_${genTmpId().slice(6)}`,
     });
 
-    if (instance.destroying == null && !clean) {
-      element.__usalFragment = 1;
-    } else {
-      delete element.__usalFragment;
-      delete element.__usalOGStyle;
-      delete element.__usalID;
-    }
+    element.__usalFragment = 1;
   }
 
   const cancelAllAnimations = (data, element, originalStyle) =>
@@ -183,15 +209,15 @@ const USAL = (() => {
             animation.cancel();
             animation.effect = null;
             animation.timeline = null;
-            if (originalStyle) {
-              if (data?.config?.[CONFIG_SPLIT] && !data.config[CONFIG_SPLIT].includes('item'))
-                originalStyle = {
-                  ...originalStyle,
-                  [STYLE_DISPLAY]: CSS_INLINE_BLOCK,
-                };
-              applyStyles(element, originalStyle);
-            }
           });
+        if (originalStyle) {
+          if (data?.config?.[CONFIG_SPLIT] && !data.config[CONFIG_SPLIT].includes('item'))
+            originalStyle = {
+              ...originalStyle,
+              [STYLE_DISPLAY]: CSS_INLINE_BLOCK,
+            };
+          applyStyles(element, originalStyle);
+        }
         resolve();
       });
     });
@@ -226,13 +252,37 @@ const USAL = (() => {
   // ============================================================================
 
   function extractAndSetConfig(prefix, config, configKey, classString) {
-    const pattern = new RegExp(`${prefix}-\\[[^\\]]+\\]`);
+    const pattern = new RegExp(`(?:^|\\s)${prefix}-\\[([^\\]]+)\\]`);
     const match = classString.match(pattern);
     if (match) {
-      config[configKey] = match[0].slice(prefix.length + 2, -1);
-      return classString.replace(match[0], '');
+      config[configKey] = match[1];
+      return classString.replace(match[0], ' ');
     }
     return classString;
+  }
+
+  function tokenizeClasses(str) {
+    const tokens = [];
+    let current = '';
+    let depth = 0;
+    for (const ch of str) {
+      if (ch === '[') {
+        depth++;
+        current += ch;
+      } else if (ch === ']') {
+        depth = Math.max(0, depth - 1);
+        current += ch;
+      } else if (/\s/.test(ch) && depth === 0) {
+        if (current) {
+          tokens.push(current);
+          current = '';
+        }
+      } else {
+        current += ch;
+      }
+    }
+    if (current) tokens.push(current);
+    return tokens;
   }
 
   const extractAnimation = (firstPart, fallback = null) => {
@@ -277,7 +327,7 @@ const USAL = (() => {
     classString = extractAndSetConfig('easing', config, CONFIG_EASING, classString);
     classString = extractAndSetConfig('line', config, CONFIG_LINE, classString);
 
-    const tokens = classString.split(/\s+/).filter(Boolean);
+    const tokens = tokenizeClasses(classString);
 
     for (const token of tokens) {
       const parts = token.split('-');
@@ -544,71 +594,78 @@ const USAL = (() => {
   // Split Animation Setup
   // ============================================================================
   function getStaggerFunction(targets, strategy = 'index') {
-    const targetsData = targets.map((target) => {
-      const rect = target.getBoundingClientRect();
-      return {
-        target,
-        x: rect.left + rect.width / 2,
-        y: rect.top + rect.height / 2,
-      };
-    });
+    let cachedNormalized = null;
 
-    const bounds = targetsData.reduce(
-      (acc, item) => ({
-        minX: Math.min(acc.minX, item.x),
-        maxX: Math.max(acc.maxX, item.x),
-        minY: Math.min(acc.minY, item.y),
-        maxY: Math.max(acc.maxY, item.y),
-      }),
-      { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity }
-    );
+    function computeNormalized() {
+      if (cachedNormalized) return cachedNormalized;
+      if (strategy === 'index' || targets.length === 0) return null;
 
-    const centerX = (bounds.minX + bounds.maxX) / 2;
-    const centerY = (bounds.minY + bounds.maxY) / 2;
-
-    const metrics = targetsData.map((item, index) => {
-      let value;
-      switch (strategy) {
-        case 'linear':
-          value = Math.hypot(item.x, item.y);
-          break;
-        case 'center':
-          value = Math.hypot(item.x - centerX, item.y - centerY);
-          break;
-        case 'edges':
-          value = Math.min(
-            Math.abs(item.x - bounds.minX),
-            Math.abs(item.x - bounds.maxX),
-            Math.abs(item.y - bounds.minY),
-            Math.abs(item.y - bounds.maxY)
-          );
-          break;
-        case 'random':
-          value = Math.random();
-          break;
-        default: // index
-          value = index;
-      }
-      return value;
-    });
-
-    const min = Math.min(...metrics);
-    const max = Math.max(...metrics);
-    const range = max - min || 1;
-
-    return (splitDelay = 50) =>
-      targetsData.map((item, index) => {
-        const normalizedValue = (metrics[index] - min) / range;
-
-        let delay;
-        if (strategy === 'index') {
-          delay = index * splitDelay;
-        } else {
-          delay = normalizedValue * (targets.length - 1) * splitDelay;
-        }
-
-        return [item.target, delay];
+      const targetsData = targets.map((target) => {
+        const rect = target.getBoundingClientRect();
+        return {
+          x: rect.left + rect.width / 2,
+          y: rect.top + rect.height / 2,
+        };
       });
+
+      const bounds = targetsData.reduce(
+        (acc, item) => ({
+          minX: Math.min(acc.minX, item.x),
+          maxX: Math.max(acc.maxX, item.x),
+          minY: Math.min(acc.minY, item.y),
+          maxY: Math.max(acc.maxY, item.y),
+        }),
+        { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity }
+      );
+
+      const centerX = (bounds.minX + bounds.maxX) / 2;
+      const centerY = (bounds.minY + bounds.maxY) / 2;
+
+      const metrics = targetsData.map((item, index) => {
+        switch (strategy) {
+          case 'linear':
+            return Math.hypot(item.x - bounds.minX, item.y - bounds.minY);
+          case 'center':
+            return Math.hypot(item.x - centerX, item.y - centerY);
+          case 'edges':
+            return Math.min(
+              Math.abs(item.x - bounds.minX),
+              Math.abs(item.x - bounds.maxX),
+              Math.abs(item.y - bounds.minY),
+              Math.abs(item.y - bounds.maxY)
+            );
+          case 'random':
+            return Math.random();
+          default:
+            return index;
+        }
+      });
+
+      const min = Math.min(...metrics);
+      const max = Math.max(...metrics);
+      const range = max - min || 1;
+      const normalized = metrics.map((value) => (value - min) / range);
+
+      if (targets[0]?.isConnected && strategy !== 'random') {
+        cachedNormalized = normalized;
+      }
+
+      return normalized;
+    }
+
+    return (splitDelay) => {
+      const delayStep = splitDelay ?? 50;
+      if (splitDelay === undefined || strategy === 'index') {
+        return targets.map((target, index) => [target, index * delayStep]);
+      }
+
+      const normalized = computeNormalized();
+      const maxStep = Math.max(0, targets.length - 1);
+      return targets.map((target, index) => [
+        target,
+        normalized ? normalized[index] * maxStep * delayStep : index * delayStep,
+      ]);
+    };
   }
 
   function setupSplit(element, splitBy, strategy, resolve) {
@@ -700,6 +757,7 @@ const USAL = (() => {
       }
 
       const processed = processTextContent(textNode.textContent);
+      if (processed) processed.__usalFragment = 1;
       wrappers.push(processed);
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
@@ -724,7 +782,8 @@ const USAL = (() => {
 
   function setupCount(element, config, data, resolve) {
     const original = config[CONFIG_COUNT].trim();
-    const clean = original.replace(/[^\d\s,.]/g, '');
+    const isNegative = original.startsWith('-');
+    const clean = original.replace(/[^\d\s,.]/g, '').trim();
 
     const separators = [',', '.', ' '].filter((s) => clean.includes(s));
     const sepPositions = separators
@@ -740,25 +799,34 @@ const USAL = (() => {
       value = parseFloat(clean);
     } else if (separators.length === 1) {
       const sep = separators[0];
-      const afterSep = clean.substring(clean.lastIndexOf(sep) + 1);
+      const occurrences = clean.split(sep).length - 1;
+      const lastIdx = clean.lastIndexOf(sep);
+      const beforeSep = clean.substring(0, lastIdx);
+      const afterSep = clean.substring(lastIdx + 1);
 
-      if (afterSep.length <= 3 && afterSep.length > 0 && sep !== ' ') {
+      const isThousand =
+        sep === ' ' ||
+        occurrences > 1 ||
+        (afterSep.length === 3 && (sep === ',' || beforeSep !== '0'));
+
+      if (!isThousand && afterSep.length > 0) {
         decimalSep = sep;
         decimals = afterSep.length;
         value = parseFloat(clean.replace(sep, '.'));
       } else {
         thousandSep = sep;
-        value = parseFloat(clean.replace(new RegExp(`\\${thousandSep}`, 'g'), ''));
+        value = parseFloat(clean.split(thousandSep).join(''));
       }
     } else {
       decimalSep = sepPositions[0].s;
       thousandSep = sepPositions[1].s;
-      const processed = clean
-        .replace(new RegExp(`\\${thousandSep}`, 'g'), '')
-        .replace(decimalSep, '.');
+      const processed = clean.split(thousandSep).join('').replace(decimalSep, '.');
       value = parseFloat(processed);
       decimals = clean.substring(sepPositions[0].p + 1).replace(/\D/g, '').length;
     }
+
+    if (isNaN(value)) value = 0;
+    if (isNegative && value > 0) value = -value;
 
     let span = null;
     let wrapper = null;
@@ -775,6 +843,8 @@ const USAL = (() => {
           const after = text.substring(index + config[CONFIG_COUNT].length);
 
           wrapper = document.createElement('span');
+          wrapper.__usalFragment = 1;
+          wrapper.__usalOriginalText = text;
 
           if (before) wrapper.appendChild(document.createTextNode(before));
 
@@ -830,6 +900,12 @@ const USAL = (() => {
         case 'linear':
           return (t) => t;
 
+        case 'step-start':
+          return (t) => (t > 0 ? 1 : 0);
+
+        case 'step-end':
+          return (t) => (t >= 1 ? 1 : 0);
+
         case 'ease':
           return (t) => {
             if (t === 0) return 0;
@@ -846,15 +922,50 @@ const USAL = (() => {
         case 'ease-in-out':
           return (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 
-        default:
+        default: {
+          const cubicMatch = easingType?.match(
+            /cubic-bezier\(\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*\)/
+          );
+          if (cubicMatch) {
+            const [, x1, y1, x2, y2] = cubicMatch.map(Number);
+            const sampleX = (u) =>
+              3 * (1 - u) * (1 - u) * u * x1 + 3 * (1 - u) * u * u * x2 + u * u * u;
+            const sampleY = (u) =>
+              3 * (1 - u) * (1 - u) * u * y1 + 3 * (1 - u) * u * u * y2 + u * u * u;
+            return (t) => {
+              if (t <= 0) return 0;
+              if (t >= 1) return 1;
+              let lo = 0,
+                hi = 1,
+                u = t;
+              for (let i = 0; i < 12; i++) {
+                const x = sampleX(u) - t;
+                if (Math.abs(x) < 1e-4) break;
+                if (x > 0) hi = u;
+                else lo = u;
+                u = (lo + hi) / 2;
+              }
+              return sampleY(u);
+            };
+          }
+          const stepsMatch = easingType?.match(/steps\(\s*(\d+)/);
+          if (stepsMatch) {
+            const n = Math.max(1, parseInt(stepsMatch[1], 10));
+            return (t) => Math.min(1, Math.floor(t * n) / n);
+          }
           return (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+        }
       }
     }
 
     const easingFunction = getEasingFunction(easing);
 
     function formatNumber(val) {
-      const parts = (decimals > 0 ? val.toFixed(decimals) : Math.floor(val).toString()).split('.');
+      const neg = val < 0;
+      const absVal = Math.abs(val);
+      const parts = (decimals > 0 ? absVal.toFixed(decimals) : Math.floor(absVal).toString()).split(
+        '.'
+      );
       if (thousandSep && parts[0].length > 3) {
         const reversed = parts[0].split('').reverse();
         parts[0] = reversed.reduce(
@@ -862,7 +973,9 @@ const USAL = (() => {
           ''
         );
       }
-      return parts.length > 1 && decimalSep ? parts[0] + decimalSep + parts[1] : parts[0];
+      const formatted =
+        parts.length > 1 && decimalSep ? parts[0] + decimalSep + parts[1] : parts[0];
+      return neg ? '-' + formatted : formatted;
     }
 
     function updateValue(time) {
@@ -1223,10 +1336,11 @@ const USAL = (() => {
             if (data.textWrappers) {
               data.textWrappers.forEach((wrapper) => {
                 if (wrapper?.parentNode) {
-                  wrapper.parentNode.replaceChild(
-                    document.createTextNode(wrapper.textContent),
-                    wrapper
+                  const textNode = document.createTextNode(
+                    wrapper.__usalOriginalText ?? wrapper.textContent
                   );
+                  textNode.__usalFragment = 1;
+                  wrapper.parentNode.replaceChild(textNode, wrapper);
                 }
               });
             }
@@ -1275,7 +1389,6 @@ const USAL = (() => {
 
     if (classes === '') return;
 
-    element.__usalFragment = 1;
     const config = parseClasses(classes);
 
     const data = {
@@ -1295,9 +1408,7 @@ const USAL = (() => {
       textWrappers: null,
     };
 
-    instance.elements.set(element.__usalID, {
-      configString: classes,
-    });
+    instance.elements.set(element.__usalID, data);
 
     const splitBy = config[CONFIG_SPLIT]?.split(' ').find((item) =>
       ['word', 'letter', 'item'].includes(item)
@@ -1336,6 +1447,10 @@ const USAL = (() => {
         data.controller = new AnimationController(data);
         resetStyle(data);
         requestAnimationFrame(async () => {
+          if (data.stop) {
+            data.onfinish();
+            return;
+          }
           if (config[CONFIG_LOOP]) {
             tryAnimate(data);
           } else {
@@ -1374,7 +1489,7 @@ const USAL = (() => {
     );
 
     function collectAllDOMs(root = document.body, collected = new Set()) {
-      if (collected.has(root)) return collected;
+      if (!root || collected.has(root)) return collected;
       collected.add(root);
 
       for (const el of root.querySelectorAll(SHADOW_CAPABLE_SELECTOR)) {
@@ -1411,12 +1526,17 @@ const USAL = (() => {
           continue;
         }
         if (!data.element.isConnected) {
+          instance.elements.delete(id);
           elementObserver.unobserve(data.element);
-          cleanupElement(data).then(() => {
-            instance.elements.delete(id);
-          });
+          cleanupElement(data);
         } else {
           tryAnimateIfVisible(data);
+        }
+      }
+
+      for (const dom of observedDOMs) {
+        if (dom !== document.body && dom.host && !dom.host.isConnected) {
+          observedDOMs.delete(dom);
         }
       }
 
@@ -1435,31 +1555,28 @@ const USAL = (() => {
       lastScan = Date.now();
     }
 
-    function handleObserverEvents(events) {
-      const items = Array.isArray(events) ? events : [events];
-      const hasUsalFragment = (target) => !!target.__usalFragment;
-
-      let cancel = null;
-      for (const item of items) {
-        if (item.type === 'attributes') {
-          const attrName = item.attributeName;
-          if (attrName === DATA_USAL_ATTRIBUTE || attrName === DATA_USAL_ID) {
-            processElement(item.target, elementObserver);
-            cancel = true;
-          }
+    function isInternalMutation(item) {
+      if (item.type === 'attributes') {
+        const attrName = item.attributeName;
+        if (attrName === DATA_USAL_ATTRIBUTE || attrName === DATA_USAL_ID) {
+          processElement(item.target, elementObserver);
         }
-        if (cancel === null) {
-          if (hasUsalFragment(item.target)) cancel = true;
-          if (item.type === 'childList') {
-            const hasUsalFragmentChild = [...item.addedNodes, ...item.removedNodes].some(
-              hasUsalFragment
-            );
-            if (hasUsalFragmentChild) cancel = true;
-          }
+        return true;
+      }
+      if (item.target?.__usalFragment) return true;
+      if (item.type === 'childList') {
+        const changedNodes = [...item.addedNodes, ...item.removedNodes];
+        if (changedNodes.length > 0 && changedNodes.every((node) => !!node.__usalFragment)) {
+          return true;
         }
       }
+      return false;
+    }
 
-      if (cancel) return;
+    function handleObserverEvents(events) {
+      const items = Array.isArray(events) ? events : [events];
+      const needsScan = items.some((item) => !isInternalMutation(item));
+      if (!needsScan) return;
 
       const timeSinceLastScan = Date.now() - lastScan;
       if (timeSinceLastScan >= instance.config.observersDelay) {
@@ -1505,16 +1622,24 @@ const USAL = (() => {
 
   const api = {
     config(newConfig = {}) {
-      if (arguments.length === 0) return { ...instance.config };
-
-      if (newConfig.defaults) {
-        newConfig.defaults = {
-          ...instance.config.defaults,
-          ...newConfig.defaults,
+      if (arguments.length === 0) {
+        return {
+          ...instance.config,
+          defaults: { ...instance.config.defaults },
         };
       }
 
-      Object.assign(instance.config, newConfig);
+      if (!newConfig || typeof newConfig !== 'object') return publicAPI;
+
+      const updated = { ...newConfig };
+      if (updated.defaults) {
+        updated.defaults = {
+          ...instance.config.defaults,
+          ...updated.defaults,
+        };
+      }
+
+      Object.assign(instance.config, updated);
       return publicAPI;
     },
     async destroy() {

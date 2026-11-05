@@ -1,9 +1,12 @@
 const Playground = (() => {
   const state = {
     editor: null,
-    centralHTML: '<div>Hello USAL!</div>',
+    centralHTML: '<h1 data-usal="fade-d duration-1000 blur">Welcome to USAL</h1>',
+    codeFormat: 'attr',
+    scrollTestMode: false,
+    activePreset: 'hero',
     config: {
-      animationType: '',
+      animationType: 'fade-d',
       splitType: '',
       textEffect: '',
       countTarget: '',
@@ -13,7 +16,7 @@ const Playground = (() => {
       splitDelay: '50',
       splitDelayStagger: '',
       easing: '',
-      blur: '',
+      blur: 'blur',
       once: false,
       fontFamily: '',
       fontWeight: '',
@@ -45,18 +48,18 @@ const Playground = (() => {
     },
     cards: {
       html: `<div class="cards" style="display: flex" data-usal="split-item fade-u split-delay-100 duration-800">
-    <div class="card">
-        <h3>Card 1</h3>
-        <p>Description text</p>
-    </div>
-    <div class="card">
-        <h3>Card 2</h3>
-        <p>Description text</p>
-    </div>
-    <div class="card">
-        <h3>Card 3</h3>
-        <p>Description text</p>
-    </div>
+  <div class="card">
+    <h3>Card 1</h3>
+    <p>Smooth staggered entry</p>
+  </div>
+  <div class="card">
+    <h3>Card 2</h3>
+    <p>Zero dependencies</p>
+  </div>
+  <div class="card">
+    <h3>Card 3</h3>
+    <p>60fps WAAPI engine</p>
+  </div>
 </div>`,
       splitType: 'split-item',
       animationType: 'fade-u',
@@ -64,9 +67,9 @@ const Playground = (() => {
       duration: '800',
     },
     counter: {
-      html: '<p data-usal="count-[21 000 000.00] duration-5000" style="font-family: \'Montserrat\', sans-serif">In 2025, we will earn US$21 000 000.00 in the first quarter alone.</p>',
-      countTarget: '21 000 000.00',
-      duration: '5000',
+      html: '<p data-usal="count-[21,000,000.00] duration-4000" style="font-family: \'Montserrat\', sans-serif">In 2025, we generated US$21,000,000.00 in Q1 alone.</p>',
+      countTarget: '21,000,000.00',
+      duration: '4000',
       fontFamily: "'Montserrat', sans-serif",
     },
     shimmer: {
@@ -104,19 +107,19 @@ const Playground = (() => {
     },
     timeline: {
       html: `<div style="
-    width: 100px;
-    height: 100px;
-    background: #bebebe12;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-weight: bold;
-    font-size: 18px;
-    border: 1px solid;
-    box-shadow: 0 10px 30px rgb(91 91 91 / 50%);
-  " data-usal="line-[p+150 ry+0 | 20 ry+1440 | 50 ry+2160 | 80 ry+2340 | 95 ry+2430 rx+30 | ry+2440 rx+90] duration-5000 forwards">BANG!</div>`,
+  width: 110px;
+  height: 110px;
+  background: rgba(99, 102, 241, 0.15);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 800;
+  font-size: 18px;
+  border: 1px solid rgba(99, 102, 241, 0.5);
+  box-shadow: 0 12px 32px rgba(99, 102, 241, 0.25);
+" data-usal="line-[p+150 ry+0 | 20 ry+1440 | 50 ry+2160 | 80 ry+2340 | 95 ry+2430 rx+30 | ry+2440 rx+90] duration-5000 forwards">BANG!</div>`,
       timeline:
         'p+150 ry+0 | 20 ry+1440 | 50 ry+2160 | 80 ry+2340 | 95 ry+2430 rx+30 | ry+2440 rx+90',
       duration: '5000',
@@ -130,18 +133,14 @@ const Playground = (() => {
       duration: '1000',
     },
     stagger: {
-      html: `<ul data-usal="split-item zoomin split-delay-100-center duration-800">
-    <li>First item</li>
-    <li>Second item</li>
-    <li>Third item</li>
-    <li>Fourth item</li>
-    <li>Fifth item</li>
-</ul>`,
-      splitType: 'split-item',
+      html: '<h1 data-usal="split-letter zoomin split-delay-60-center duration-800" style="font-family: \'Plus Jakarta Sans\', sans-serif; font-weight: 800">CENTER STAGGER</h1>',
+      splitType: 'split-letter',
       animationType: 'zoomin',
-      splitDelay: '100',
+      splitDelay: '60',
       splitDelayStagger: 'center',
       duration: '800',
+      fontFamily: "'Plus Jakarta Sans', sans-serif",
+      fontWeight: '800',
     },
   };
 
@@ -196,19 +195,23 @@ const Playground = (() => {
       requestAnimationFrame(() => {
         try {
           if (source === 'editor') {
+            state.activePreset = '';
             state.centralHTML = state.editor.getValue();
             parseHTMLToConfig();
             syncControlsFromConfig();
           } else if (source === 'controls') {
+            state.activePreset = '';
             readControlsToConfig();
             updateCentralHTML();
             syncEditorFromHTML();
+            syncControlsFromConfig();
           } else if (source === 'preset' || source === 'init' || source === 'reset') {
             parseHTMLToConfig();
             syncEditorFromHTML();
             syncControlsFromConfig();
           }
 
+          syncPresetButtons();
           updateGeneratedCode();
           renderPreview();
         } catch (error) {
@@ -249,7 +252,7 @@ const Playground = (() => {
     // Guard synchronously: change fires during setValue while the flag is
     // still true, so programmatic updates never re-trigger the editor source.
     let programmaticChange = false;
-    const debouncedEditorUpdate = debounce(() => requestUpdate('editor'), 500);
+    const debouncedEditorUpdate = debounce(() => requestUpdate('editor'), 400);
 
     state.editor.on('change', () => {
       if (programmaticChange) return;
@@ -264,13 +267,17 @@ const Playground = (() => {
   }
 
   function attachEventListeners() {
+    const customHandledIds = new Set(['easing', 'animationType', 'splitType', 'loop']);
+    const debouncedControlUpdate = debounce(() => requestUpdate('controls'), 250);
+
     Object.keys(state.config).forEach((key) => {
+      if (customHandledIds.has(key)) return;
       const element = document.getElementById(key);
       if (!element) return;
-      const eventType = element.type === 'checkbox' ? 'change' : 'input';
+      const isImmediate = element.type === 'checkbox' || element.tagName === 'SELECT';
       element.addEventListener(
-        eventType,
-        debounce(() => requestUpdate('controls'), 300)
+        isImmediate ? 'change' : 'input',
+        isImmediate ? () => requestUpdate('controls') : debouncedControlUpdate
       );
     });
 
@@ -278,6 +285,25 @@ const Playground = (() => {
     document.getElementById('resetBtn')?.addEventListener('click', reset);
     document.getElementById('shareBtn')?.addEventListener('click', share);
     document.getElementById('copyBtn')?.addEventListener('click', copyCode);
+    document.getElementById('formatHtmlBtn')?.addEventListener('click', formatEditorHTML);
+    document.getElementById('scrollModeBtn')?.addEventListener('click', toggleScrollTestMode);
+
+    const sidebarToggleBtn = document.getElementById('sidebarToggleBtn');
+    const sidebar = document.getElementById('playgroundSidebar');
+    sidebarToggleBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      sidebar?.classList.toggle('open');
+    });
+
+    document.addEventListener('click', (e) => {
+      if (
+        sidebar?.classList.contains('open') &&
+        !sidebar.contains(e.target) &&
+        e.target !== sidebarToggleBtn
+      ) {
+        sidebar.classList.remove('open');
+      }
+    });
 
     document.getElementById('easing')?.addEventListener('change', (e) => {
       const customField = document.getElementById('easingCustom');
@@ -287,7 +313,7 @@ const Playground = (() => {
 
     document.getElementById('easingCustom')?.addEventListener(
       'input',
-      debounce(() => requestUpdate('controls'), 300)
+      debounce(() => requestUpdate('controls'), 250)
     );
 
     document.getElementById('animationType')?.addEventListener('change', (e) => {
@@ -295,6 +321,7 @@ const Playground = (() => {
       if (timelineSection) {
         timelineSection.style.display = e.target.value === 'custom-timeline' ? 'block' : 'none';
       }
+      updateTuningLabels(e.target.value);
       requestUpdate('controls');
     });
 
@@ -311,7 +338,33 @@ const Playground = (() => {
     });
 
     document.querySelectorAll('.preset-btn').forEach((btn) => {
-      btn.addEventListener('click', () => loadPreset(btn.dataset.preset));
+      btn.addEventListener('click', () => {
+        loadPreset(btn.dataset.preset);
+        sidebar?.classList.remove('open');
+      });
+    });
+
+    document.querySelectorAll('.bg-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const bg = btn.dataset.bg;
+        const wrapper = document.getElementById('previewWrapper');
+        if (!wrapper || !bg) return;
+        wrapper.classList.remove('bg-grid', 'bg-dark', 'bg-light');
+        wrapper.classList.add(`bg-${bg}`);
+        document
+          .querySelectorAll('.bg-btn')
+          .forEach((b) => b.classList.toggle('active', b === btn));
+      });
+    });
+
+    document.querySelectorAll('.fw-tab').forEach((tab) => {
+      tab.addEventListener('click', () => {
+        state.codeFormat = tab.dataset.fw || 'attr';
+        document
+          .querySelectorAll('.fw-tab')
+          .forEach((t) => t.classList.toggle('active', t === tab));
+        updateGeneratedCode();
+      });
     });
 
     // Replay shortcut
@@ -322,9 +375,140 @@ const Playground = (() => {
       }
     });
 
-    // Replay when the preview enters the viewport again is unnecessary; the
-    // explicit button + shortcut covers the "re-trigger" use case.
     window.addEventListener('hashchange', () => loadFromURL());
+  }
+
+  function syncPresetButtons() {
+    document.querySelectorAll('.preset-btn').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.preset === state.activePreset);
+    });
+  }
+
+  function updateTuningLabels(animationType) {
+    const tuningSection = document.getElementById('tuningSection');
+    const label1 = document.getElementById('tuning1Label');
+    const label2 = document.getElementById('tuning2Label');
+    const label3 = document.getElementById('tuning3Label');
+    const wrapper3 = document.getElementById('tuning3Wrapper');
+
+    if (tuningSection) {
+      tuningSection.style.display = animationType === 'custom-timeline' ? 'none' : 'block';
+    }
+    if (!label1 || !label2 || !label3 || !wrapper3) return;
+
+    const anim = animationType || '';
+    if (anim.startsWith('flip')) {
+      label1.textContent = 'Angle (deg)';
+      label2.textContent = 'Perspective (rem)';
+      wrapper3.style.display = 'none';
+    } else if (anim.startsWith('zoomin') || anim.startsWith('zoomout')) {
+      label1.textContent = 'Move X (%)';
+      label2.textContent = 'Move Y (%)';
+      label3.textContent = 'Zoom Intensity (%)';
+      wrapper3.style.display = 'block';
+    } else {
+      label1.textContent = 'Distance X (%)';
+      label2.textContent = 'Distance Y (%)';
+      wrapper3.style.display = 'none';
+    }
+  }
+
+  function toggleScrollTestMode() {
+    state.scrollTestMode = !state.scrollTestMode;
+    const btn = document.getElementById('scrollModeBtn');
+    const topSpacer = document.getElementById('scrollSpacerTop');
+    const bottomSpacer = document.getElementById('scrollSpacerBottom');
+    const wrapper = document.getElementById('previewWrapper');
+
+    if (btn) {
+      btn.classList.toggle('active', state.scrollTestMode);
+      btn.textContent = `Scroll Test: ${state.scrollTestMode ? 'On' : 'Off'}`;
+    }
+    if (topSpacer) topSpacer.style.display = state.scrollTestMode ? 'flex' : 'none';
+    if (bottomSpacer) bottomSpacer.style.display = state.scrollTestMode ? 'flex' : 'none';
+
+    if (wrapper) {
+      if (state.scrollTestMode) {
+        wrapper.scrollTo({ top: 0, behavior: 'smooth' });
+        showToast('Scroll down inside the preview to test threshold triggers', 'info');
+      } else {
+        wrapper.scrollTo({ top: 0, behavior: 'auto' });
+      }
+    }
+  }
+
+  function formatEditorHTML() {
+    if (!state.editor) return;
+    const raw = (updating || pending !== null ? state.centralHTML : state.editor.getValue()).trim();
+    if (!raw) return;
+
+    const formatted = prettyPrintHTML(raw);
+    state.centralHTML = formatted;
+    state.editor.setValueSilently(formatted);
+    updateGeneratedCode();
+    showToast('HTML formatted', 'info');
+  }
+
+  function prettyPrintHTML(html) {
+    const voidTags = new Set([
+      'area',
+      'base',
+      'br',
+      'col',
+      'embed',
+      'hr',
+      'img',
+      'input',
+      'link',
+      'meta',
+      'param',
+      'source',
+      'track',
+      'wbr',
+    ]);
+    const tokens = html
+      .replace(/>\s+</g, '><')
+      .split(/(<[^>]+>)/g)
+      .filter(Boolean);
+
+    let indent = 0;
+    const lines = [];
+    let i = 0;
+
+    while (i < tokens.length) {
+      const token = tokens[i];
+      if (token.startsWith('</')) {
+        indent = Math.max(0, indent - 1);
+        lines.push('  '.repeat(indent) + token);
+        i++;
+      } else if (token.startsWith('<') && !token.startsWith('<!')) {
+        const tagMatch = token.match(/^<([a-zA-Z0-9-]+)/);
+        const tagName = tagMatch ? tagMatch[1].toLowerCase() : '';
+        const isSelfClosing = token.endsWith('/>') || voidTags.has(tagName);
+
+        // Keep short inline text `<tag>text</tag>` on a single line
+        if (
+          !isSelfClosing &&
+          i + 2 < tokens.length &&
+          !tokens[i + 1].startsWith('<') &&
+          tokens[i + 1].length <= 60 &&
+          tokens[i + 2] === `</${tagName}>`
+        ) {
+          lines.push('  '.repeat(indent) + token + tokens[i + 1] + tokens[i + 2]);
+          i += 3;
+        } else {
+          lines.push('  '.repeat(indent) + token);
+          if (!isSelfClosing) indent++;
+          i++;
+        }
+      } else {
+        const trimmed = token.trim();
+        if (trimmed) lines.push('  '.repeat(indent) + trimmed);
+        i++;
+      }
+    }
+
+    return lines.join('\n');
   }
 
   // ============================================================================
@@ -333,7 +517,7 @@ const Playground = (() => {
 
   function findTagStart(html, fromIdx) {
     let i = fromIdx;
-    while (i > 0) {
+    while (i >= 0) {
       const lt = html.lastIndexOf('<', i);
       if (lt === -1) return -1;
       const next = html[lt + 1];
@@ -442,7 +626,7 @@ const Playground = (() => {
           if (delayParts[1] && ['linear', 'center', 'edges', 'random'].includes(delayParts[1])) {
             newConfig.splitDelayStagger = delayParts[1];
           }
-        } else if (splitPart.match(/^(fade|zoomin|zoomout|flip)/)) {
+        } else if (/^(fade|zoomin|zoomout|flip|slide)/.test(splitPart)) {
           hasSplitAnimation = true;
           applyAnimationToken(newConfig, splitPart);
         }
@@ -451,7 +635,7 @@ const Playground = (() => {
 
       if (
         !hasSplitAnimation &&
-        token.match(/^(fade|zoomin|zoomout|flip|slide)(-[udlr]{1,2})?(-\d+)?(-\d+)?(-\d+)?$/)
+        /^(fade|zoomin|zoomout|flip|slide)(-[udlr]{1,2})?(-\d+)?(-\d+)?(-\d+)?$/.test(token)
       ) {
         applyAnimationToken(newConfig, token);
         continue;
@@ -517,7 +701,7 @@ const Playground = (() => {
         newConfig.blur = 'blur';
         continue;
       }
-      if (token.match(/^blur-(\d+(\.\d+)?)$/)) {
+      if (/^blur-(\d+(\.\d+)?)$/.test(token)) {
         newConfig.blur = token;
         continue;
       }
@@ -663,8 +847,6 @@ const Playground = (() => {
   function setSelectValue(id, value) {
     const el = document.getElementById(id);
     if (!el) return;
-    // Keep the current selection when value is empty, and only update when
-    // the option actually exists (avoid silently resetting to the first option).
     if (value && [...el.options].some((opt) => opt.value === value)) {
       el.value = value;
     } else if (!value) {
@@ -714,6 +896,8 @@ const Playground = (() => {
           : 'none';
     }
 
+    updateTuningLabels(state.config.animationType);
+
     const staggerSection = document.getElementById('splitDelayStaggerSection');
     if (staggerSection) {
       staggerSection.style.display = state.config.splitType ? 'block' : 'none';
@@ -735,7 +919,12 @@ const Playground = (() => {
     const tuningParts = [];
     if (state.config.tuning1) tuningParts.push(state.config.tuning1);
     if (state.config.tuning2) tuningParts.push(state.config.tuning2);
-    if (state.config.tuning3) tuningParts.push(state.config.tuning3);
+    if (
+      state.config.tuning3 &&
+      (animationType.startsWith('zoomin') || animationType.startsWith('zoomout'))
+    ) {
+      tuningParts.push(state.config.tuning3);
+    }
     if (tuningParts.length) animation += '-' + tuningParts.join('-');
     return animation;
   }
@@ -746,8 +935,6 @@ const Playground = (() => {
 
     if (config.splitType) {
       parts.push(config.splitType);
-      // USAL's canonical split syntax uses the bare animation name alongside
-      // the split type (e.g. "split-item zoomin"), not a "split-<anim>" token.
       const anim = animationWithTuning(config.animationType);
       if (anim) parts.push(anim);
 
@@ -769,12 +956,11 @@ const Playground = (() => {
     if (config.delay && config.delay !== '0') parts.push(`delay-${config.delay}`);
     if (config.threshold && config.threshold !== '10') parts.push(`threshold-${config.threshold}`);
 
-    if (config.easing) {
-      if (config.easing.startsWith('easing-[')) {
-        parts.push(config.easing);
-      } else if (!['', 'ease-out'].includes(config.easing)) {
-        parts.push(config.easing);
-      }
+    if (
+      config.easing &&
+      (config.easing.startsWith('easing-[') || !['', 'ease-out'].includes(config.easing))
+    ) {
+      parts.push(config.easing);
     }
 
     if (config.blur) parts.push(config.blur);
@@ -795,11 +981,40 @@ const Playground = (() => {
     return styles.join('; ');
   }
 
+  function formatSnippetForFramework(format, dataUsal) {
+    if (!dataUsal) return 'No animation configured';
+    const html = state.centralHTML.trim();
+
+    switch (format) {
+      case 'html':
+        return html;
+      case 'react':
+        return html.replace(/\bclass=/g, 'className=');
+      case 'vue':
+        return html.replace(/data-usal="([^"]*)"/, `v-usal="'$1'"`);
+      case 'svelte':
+        return html.replace(/data-usal="([^"]*)"/, `use:usal={'$1'}`);
+      case 'angular':
+        return html.replace(/data-usal="([^"]*)"/, `[usal]="'$1'"`);
+      case 'lit':
+        return html.replace(/data-usal="([^"]*)"/, `\${usal('$1')}`);
+      case 'attr':
+      default:
+        return `data-usal="${dataUsal}"`;
+    }
+  }
+
   function updateGeneratedCode() {
     const dataUsal = generateDataUsal();
+    const tokens = dataUsal ? tokenizeDataUsal(dataUsal) : [];
+    const badge = document.getElementById('activeTokensBadge');
+    if (badge) {
+      badge.textContent = `${tokens.length} ${tokens.length === 1 ? 'token' : 'tokens'}`;
+    }
+
     const codeElement = document.getElementById('generatedCode');
     if (codeElement) {
-      codeElement.textContent = dataUsal ? `data-usal="${dataUsal}"` : 'No animation configured';
+      codeElement.textContent = formatSnippetForFramework(state.codeFormat, dataUsal);
     }
   }
 
@@ -813,9 +1028,6 @@ const Playground = (() => {
 
     const temp = document.createElement('div');
     temp.innerHTML = DOMPurify.sanitize(state.centralHTML);
-
-    const newContent = temp.innerHTML;
-    if (preview.innerHTML === newContent) return;
 
     preview.innerHTML = '';
     while (temp.firstChild) {
@@ -857,8 +1069,11 @@ const Playground = (() => {
   // ============================================================================
 
   function reset() {
-    state.centralHTML = '<div>Hello USAL!</div>';
+    state.activePreset = '';
+    state.centralHTML = '<div data-usal="fade duration-1000">Hello USAL!</div>';
+    state.editor?.setValueSilently(state.centralHTML);
     resetConfig();
+    state.config.animationType = 'fade';
     requestUpdate('reset');
     showToast('Reset to defaults', 'info');
   }
@@ -867,7 +1082,9 @@ const Playground = (() => {
     const preset = presets[name];
     if (!preset) return;
 
+    state.activePreset = name;
     state.centralHTML = preset.html;
+    state.editor?.setValueSilently(state.centralHTML);
     resetConfig();
     Object.keys(preset).forEach((key) => {
       if (key !== 'html' && key in state.config) {
@@ -922,7 +1139,7 @@ const Playground = (() => {
   async function copyCode() {
     const code = document.getElementById('generatedCode')?.textContent || '';
     const ok = await copyToClipboard(code);
-    showToast(ok ? 'Copied!' : 'Copy failed', ok ? 'success' : 'error');
+    showToast(ok ? 'Snippet copied!' : 'Copy failed', ok ? 'success' : 'error');
   }
 
   // ============================================================================
@@ -947,7 +1164,7 @@ const Playground = (() => {
             .allow(''),
           countTarget: joi
             .string()
-            .pattern(/^[0-9.,\s]*$/)
+            .pattern(/^-?[0-9.,\s]*$/)
             .allow(''),
           fontFamily: joi
             .string()
@@ -1001,8 +1218,31 @@ const Playground = (() => {
 
     if (value.html) {
       value.html = DOMPurify.sanitize(value.html, {
-        ALLOWED_TAGS: ['div', 'span', 'p', 'h1', 'h2', 'h3', 'ul', 'li'],
-        ALLOWED_ATTR: ['class', 'id', 'data-usal', 'style'],
+        ALLOWED_TAGS: [
+          'div',
+          'span',
+          'p',
+          'h1',
+          'h2',
+          'h3',
+          'h4',
+          'h5',
+          'h6',
+          'ul',
+          'ol',
+          'li',
+          'strong',
+          'em',
+          'small',
+          'section',
+          'article',
+          'header',
+          'footer',
+          'button',
+          'a',
+          'br',
+        ],
+        ALLOWED_ATTR: ['class', 'id', 'data-usal', 'style', 'href'],
       });
     }
     return value;
@@ -1018,6 +1258,7 @@ const Playground = (() => {
       const rawConfig = JSON.parse(decompressed);
       const safeConfig = validateAndSanitize(rawConfig);
 
+      state.activePreset = '';
       if (safeConfig.html) state.centralHTML = safeConfig.html;
 
       Object.keys(safeConfig).forEach((key) => {
